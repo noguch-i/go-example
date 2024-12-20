@@ -24,12 +24,12 @@ jobs:
           elif [ $branch_type == 'fix' ] || [ $branch_type == 'hotfix' ]; then
             echo "label_name=bug" >> $GITHUB_ENV
           else
-            label_name=""
+            echo "label_name=" >> $GITHUB_ENV
           fi
 
       # PRにラベルを付与する
       - name: Auto labeling
-        if: ${{ steps.label_name.outputs.label_name }}
+        if: ${{ env.label_name }}
         run: |
             gh pr edit ${{ github.event.number }} --add-label "${{ env.label_name }}"
         env:
