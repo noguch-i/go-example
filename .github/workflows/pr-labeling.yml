@@ -1,0 +1,38 @@
+name: Automatically labeling PR
+
+on:
+  pull_request:
+    types: [opened]
+
+jobs:
+  auto-labeling-pr:
+    runs-on: ubuntu-latest
+
+    permissions:
+        issues: write
+        pull-requests: write
+
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get label name
+        id: label_name
+        run: |
+          branch_type=$(echo "${GITHUB_HEAD_REF}" | cut -d "/" -f1)
+          if [ $branch_type == 'feature' ] || [ $branch_type == 'feat' ]; then
+            echo "label_name=feature" >> $GITHUB_ENV
+          elif [ $branch_type == 'fix' ] || [ $branch_type == 'hotfix' ]; then
+            echo "label_name=bug" >> $GITHUB_ENV
+          else
+            echo "label_name=" >> $GITHUB_ENV
+          fi
+
+      - name: Auto labeling
+        if: ${{ env.label_name }}
+        run: |
+            gh pr edit ${{ github.event.number }} --add-label "${{ env.label_name }}"
+        env:
+            GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
