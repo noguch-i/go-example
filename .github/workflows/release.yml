@@ -16,7 +16,6 @@ jobs:
 
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      GITHUB_REPO: ${{ github.repository }}
       TZ: "Asia/Tokyo"
 
     steps:
@@ -26,7 +25,7 @@ jobs:
       - name: Get previous tag
         id: pre_tag
         run: |
-          echo "pre_tag=$(gh api -H "Accept: application/vnd.github+json" /repos/${ GITHUB_REPO }/releases/latest | jq -r .tag_name)" >> $GITHUB_OUTPUT
+          echo "pre_tag=$(gh api -H "Accept: application/vnd.github+json" /repos/${{ github.repository }}/releases/latest | jq -r .tag_name)" >> $GITHUB_OUTPUT
 
       # タグを生成 「{YYYY.MM.DD}-{当日リリース回数}」
       - name: Generate tag
@@ -63,7 +62,7 @@ jobs:
           gh api \
             --method POST \
             -H "Accept: application/vnd.github+json" \
-            /repos/${ GITHUB_REPO }/releases/generate-notes \
+            /repos/${{ github.repository }}/releases/generate-notes \
             -d '{
               "tag_name": "${{ steps.release_tag.outputs.release_tag }}",
               "previous_tag_name": "${{ steps.pre_tag.outputs.pre_tag }}",
@@ -93,7 +92,7 @@ jobs:
             }" \
             -w "%{http_code}" \
             -o response_body.txt \
-            repos/${ GITHUB_REPO }/releases)
+            repos/${{ github.repository }}/releases)
             status_code=$(tail -n1 <<< "$response")
             echo "Status Code: $status_code"
             body=$(cat response_body.txt)
