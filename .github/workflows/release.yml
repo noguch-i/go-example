@@ -10,9 +10,8 @@ jobs:
   create-release-tag:
     # PRがマージされたときのみ実行
     if: |
-     github.event.pull_request.merged == true &&
-     github.event.pull_request.base.ref != 'stg' &&
-     github.event.pull_request.base.ref != 'prd'
+        github.event.pull_request.merged == true &&
+        github.event.pull_request.head.ref == 'dev'
     runs-on: ubuntu-latest
 
     env:
@@ -45,7 +44,7 @@ jobs:
       - name: Extract PR body
         id: pr_body
         run: |
-          PR_NUMBER=$(gh pr list --base prd --state merged --json number --jq '.[0].number')
+          PR_NUMBER=$(gh pr list --base main --state merged --json number --jq '.[0].number')
           if [ -z "$PR_NUMBER" ]; then
             echo "No merged PR found."
             exit 1
