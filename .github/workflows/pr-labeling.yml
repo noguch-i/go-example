@@ -6,6 +6,8 @@ on:
 
 jobs:
   auto-labeling-pr:
+    if: github.event.pull_request.base.ref != 'stg' &&
+        github.event.pull_request.base.ref != 'prd'
     runs-on: ubuntu-latest
 
     permissions:
