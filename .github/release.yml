@@ -12,6 +12,7 @@ changelog:
   - title: 🐛 Bug Fix
     labels:
     - "bug"
+- "fix"
   - title: 🛠 Other Changes
     labels:
     - "*"
