@@ -10,9 +10,8 @@ jobs:
   create-release-tag:
     # PRがマージされたときのみ実行
     if: |
-     github.event.pull_request.merged == true &&
-     github.event.pull_request.base.ref != 'stg' &&
-     github.event.pull_request.base.ref != 'prd'
+        github.event.pull_request.merged == true &&
+        github.event.pull_request.head.ref == 'dev'
     runs-on: ubuntu-latest
 
     env:
