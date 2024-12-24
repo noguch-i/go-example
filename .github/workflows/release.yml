@@ -1,0 +1,102 @@
+name: Create release tag and release note.
+
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - prd
+
+jobs:
+  create-release-tag:
+    # PRがマージされたときのみ実行
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GITHUB_REPO: ${{ github.repository }}
+      TZ: "Asia/Tokyo"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # 前回のリリースタグを取得
+      - name: Get previous tag
+        id: pre_tag
+        run: |
+          echo "pre_tag=$(gh api -H "Accept: application/vnd.github+json" /repos/${ GITHUB_REPO }/releases/latest | jq -r .tag_name)" >> $GITHUB_OUTPUT
+
+      # タグを生成 「{YYYY.MM.DD}-{当日リリース回数}」
+      - name: Generate tag
+        id: release_tag
+        run: |
+          today=$(date +'%Y.%m.%d')
+          pre_release_date=$(echo ${{ steps.pre_tag.outputs.pre_tag }} | awk -F'-' '{print $1}')
+          pre_release_count=$(echo ${{ steps.pre_tag.outputs.pre_tag }} | awk -F'-' '{print $2}')
+          if [[ ! $pre_release_date = $today ]]; then
+            pre_release_count=0
+          fi
+          echo "release_tag=$today-$(($pre_release_count + 1))" >> $GITHUB_OUTPUT
+
+      # リリースノートにnotionのリンクを追加
+      - name: Extract PR body
+        id: pr_body
+        run: |
+          PR_NUMBER=$(gh pr list --base prd --state merged --json number --jq '.[0].number')
+          if [ -z "$PR_NUMBER" ]; then
+            echo "No merged PR found."
+            exit 1
+          fi
+          PR_BODY=$(gh pr view $PR_NUMBER --json body --jq '.body' | grep -o 'https://www.notion.so/[a-zA-Z0-9?=/-]*')
+          if [ -z "$PR_BODY" ]; then
+            PR_BODY=""
+          fi
+          echo "pr_body=$PR_BODY" >> $GITHUB_OUTPUT
+
+      # 前回リリースからの差分をもとに、変更点を取得する
+      - name: Generate release note changes
+        id: changes
+        run: |
+          echo "changes=$(
+          gh api \
+            --method POST \
+            -H "Accept: application/vnd.github+json" \
+            /repos/${ GITHUB_REPO }/releases/generate-notes \
+            -d '{
+              "tag_name": "${{ steps.release_tag.outputs.release_tag }}",
+              "previous_tag_name": "${{ steps.pre_tag.outputs.pre_tag }}",
+              "target_commitish": "main"
+            }' | jq .body
+          )" >> $GITHUB_OUTPUT
+
+      # リリースノートの本文を作成する
+      - name: Create release note body
+        id: release_note_body
+        run: |
+          echo "release_note_body=$(echo \
+            ${{ steps.pr_body.outputs.pr_body }} \
+            ${{ steps.changes.outputs.changes }} \
+            | sed 's/\\"//g' | sed 's/["“]//g')" >> $GITHUB_OUTPUT
+
+      # タグを切り、リリースノートを作成する
+      - name: Generate release notes content for a release
+        run: |
+          response=$(gh api \
+            --method POST \
+            -d "{ \
+              \"tag_name\": \"${{ steps.release_tag.outputs.release_tag }}\", \
+              \"target_commitish\": \"main\", \
+              \"name\": \"${{ steps.release_tag.outputs.release_tag }}\", \
+              \"body\": \"${{ steps.release_note_body.outputs.release_note_body }}\" \
+            }" \
+            -w "%{http_code}" \
+            -o response_body.txt \
+            repos/${ GITHUB_REPO }/releases)
+            status_code=$(tail -n1 <<< "$response")
+            echo "Status Code: $status_code"
+            body=$(cat response_body.txt)
+            echo "Response Body: $body"
+            if [ $status_code -ne 201 ]; then
+              echo "Failed to create release"
+              exit 1
+            fi
