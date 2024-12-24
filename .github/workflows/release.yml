@@ -84,14 +84,21 @@ jobs:
         run: |
           response=$(gh api \
             --method POST \
-            -f tag_name=${{ steps.release_tag.outputs.release_tag }} -f target_commitish=main \
-            -f name=${{ steps.release_tag.outputs.release_tag }} -f body=${{ steps.release_note_body.outputs.release_note_body }} \
-            repos/${{ github.repository }}/releases)
-            status_code=$(tail -n1 <<< "$response")
-            echo "Status Code: $status_code"
-            body=$(cat response_body.txt)
-            echo "Response Body: $body"
-            if [ $status_code -ne 201 ]; then
-              echo "Failed to create release"
-              exit 1
+            -f tag_name="${{ steps.release_tag.outputs.release_tag }}" \
+            -f target_commitish="main" \
+            -f name="${{ steps.release_tag.outputs.release_tag }}" \
+            -f body="${{ steps.release_note_body.outputs.release_note_body }}" \
+            /repos/${{ github.repository }}/releases)
+
+            if [ $? -ne 0 ]; then
+                echo "Failed to execute gh api command"
+                exit 1
+            fi
+
+            echo "Response: $response"
+            
+            status_code=$(echo "$response" | jq -r '.status_code')
+            if [ "$status_code" != "201" ]; then
+                echo "Failed to create release"
+                exit 1
             fi
