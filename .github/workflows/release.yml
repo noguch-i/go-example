@@ -4,12 +4,15 @@ on:
   pull_request:
     types: [closed]
     branches:
-      - prd
+      - main
 
 jobs:
   create-release-tag:
     # PRがマージされたときのみ実行
-    if: github.event.pull_request.merged == true
+    if: |
+     github.event.pull_request.merged == true &&
+     github.event.pull_request.base.ref != 'stg' &&
+     github.event.pull_request.base.ref != 'prd'
     runs-on: ubuntu-latest
 
     env:
