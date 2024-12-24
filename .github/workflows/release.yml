@@ -90,6 +90,9 @@ jobs:
             -f body="${{ steps.release_note_body.outputs.release_note_body }}" \
             /repos/${{ github.repository }}/releases)
 
+            status_code=$(tail -n1 <<< "$response")
+            echo "Status Code: $status_code"
+
             if [ $? -ne 0 ]; then
                 echo "Failed to execute gh api command"
                 exit 1
