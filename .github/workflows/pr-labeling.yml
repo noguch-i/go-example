@@ -1,5 +1,7 @@
 name: PR Labeler
 
+run-name: Run By @${{ github.actor}}
+
 on:
   pull_request:
     types: [opened]

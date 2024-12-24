@@ -1,7 +1,5 @@
 name: Create release tag and release note.
 
-run-name: Run By @${{ github.actor}}
-
 on:
   pull_request:
     types: [closed]
