@@ -45,7 +45,7 @@ jobs:
       - name: Extract PR body
         id: pr_body
         run: |
-          PR_NUMBER=$(gh pr list --base prd --state merged --json number --jq '.[0].number')
+          PR_NUMBER=$(gh pr list --base main --state merged --json number --jq '.[0].number')
           if [ -z "$PR_NUMBER" ]; then
             echo "No merged PR found."
             exit 1
