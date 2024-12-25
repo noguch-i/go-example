@@ -27,71 +27,72 @@ jobs:
 
       # 前回のリリースタグを取得
       - name: Get previous tag
-        id: pre_tag
+        id: pre-tag
         run: |
-          echo "pre_tag=$(gh api -H "Accept: application/vnd.github+json" /repos/${{ github.repository }}/releases/latest | jq -r .tag_name)" >> $GITHUB_OUTPUT
+          echo "PRE_TAG=$(gh api -H "Accept: application/vnd.github+json" /repos/${{ github.repository }}/releases/latest | jq -r .tag_name)" >> $GITHUB_OUTPUT
 
       # タグを生成 「{YYYY.MM.DD}-{当日リリース回数}」
       - name: Generate tag
-        id: release_tag
+        id: release-tag
         run: |
-          today=$(date +'%Y.%m.%d')
-          pre_release_date=$(echo ${{ steps.pre_tag.outputs.pre_tag }} | awk -F'-' '{print $1}')
-          pre_release_count=$(echo ${{ steps.pre_tag.outputs.pre_tag }} | awk -F'-' '{print $2}')
-          if [[ ! $pre_release_date = $today ]]; then
+          TODAY=$(date +'%Y.%m.%d')
+          pre_release_date=$(echo ${{ steps.pre-tag.outputs.PRE_TAG }} | awk -F'-' '{print $1}')
+          pre_release_count=$(echo ${{ steps.pre-tag.outputs.PRE_TAG }} | awk -F'-' '{print $2}')
+          if [[ ! $pre_release_date = $TODAY ]]; then
             pre_release_count=0
           fi
-          echo "release_tag=$today-$(($pre_release_count + 1))" >> $GITHUB_OUTPUT
+          echo "RELEASE_TAG=$TODAY-$(($pre_release_count + 1))" >> $GITHUB_OUTPUT
 
       # リリースノートにnotionのリンクを追加
       - name: Extract PR body
-        id: pr_body
+        id: pr-body
         run: |
-          PR_NUMBER=$(gh pr list --base main --state merged --json number --jq '.[0].number')
+          PR_NUMBER=$(gh pr list --base main --state merged --json number --jq '.[0].number'  --limit 1)
           if [ -z "$PR_NUMBER" ]; then
             echo "No merged PR found."
             exit 1
           fi
-          PR_BODY=$(gh pr view $PR_NUMBER --json body --jq '.body' | grep -o 'https://www.notion.so/[a-zA-Z0-9?=/-]*')
-          if [ -z "$PR_BODY" ]; then
-            PR_BODY=""
+          pr_body=$(gh pr view "$PR_NUMBER" --json body --jq '.body')
+          NOTION_LINK=$(echo "$pr_body" | grep -o 'https://www.notion.so/[a-zA-Z0-9?=/-]*')
+          if [ $? -ne 0 ]; then
+            NOTION_LINK=""
           fi
-          echo "pr_body=$PR_BODY" >> $GITHUB_OUTPUT
+          echo "NOTION_LINK=$NOTION_LINK" >> $GITHUB_OUTPUT
 
       # 前回リリースからの差分をもとに、変更点を取得する
       - name: Generate release note changes
         id: changes
         run: |
-          echo "changes=$(
+          echo "CHANGES=$(
           gh api \
             --method POST \
             -H "Accept: application/vnd.github+json" \
             /repos/${{ github.repository }}/releases/generate-notes \
-            -f tag_name="${{ steps.release_tag.outputs.release_tag }}" \
-            -f previous_tag_name="${{ steps.pre_tag.outputs.pre_tag }}" \
+            -f tag_name="${{ steps.release-tag.outputs.RELEASE_TAG }}" \
+            -f previous_tag_name="${{ steps.pre-tag.outputs.pre-tag }}" \
             -f target_commitish="main" \
             -f configuration_file_path=".github/release.yml" \
-             | jq .body
+             | jq .body | sed 's/\\n/\n/g'
           )" >> $GITHUB_OUTPUT
 
       # リリースノートの本文を作成する
       - name: Create release note body
-        id: release_note_body
+        id: release-note-body
         run: |
-          echo "release_note_body=$(echo \
-            ${{ steps.pr_body.outputs.pr_body }} \
-            ${{ steps.changes.outputs.changes }} \
+          echo "RELEASE_NOTE_BODY=$(echo \
+            ${{ steps.pr-body.outputs.PR_BODY }} \
+            ${{ steps.changes.outputs.CHANGES }} \
             | sed 's/\\"//g' | sed 's/["“]//g')" >> $GITHUB_OUTPUT
 
       # タグを切り、リリースノートを作成する
       - name: Generate release notes content for a release
         run: |
-          response=$(gh api \
+          RESPONSE=$(gh api \
             --method POST \
-            -f tag_name="${{ steps.release_tag.outputs.release_tag }}" \
+            -f tag_name="${{ steps.release-tag.outputs.release-tag }}" \
             -f target_commitish="main" \
-            -f name="${{ steps.release_tag.outputs.release_tag }}" \
-            -f body="${{ steps.release_note_body.outputs.release_note_body }}" \
+            -f name="${{ steps.release-tag.outputs.release-tag }}" \
+            -f body="${{ steps.release-note-body.outputs.RELEASE_NOTE_BODY }}" \
             /repos/${{ github.repository }}/releases)
 
             if [ $? -ne 0 ]; then
@@ -99,4 +100,4 @@ jobs:
                 exit 1
             fi
 
-            echo "Response: $response"
+            echo "Response: $RESPONSE"
