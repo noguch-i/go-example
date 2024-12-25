@@ -6,13 +6,19 @@ changelog:
     authors:
     - github-actions
   categories:
-  - title: 🚀 New Features
+  - title: ✨ New Features
     labels:
     - "feature"
-  - title: 🐛 Bug Fix
+  - title: 🐛 Bug Fixes
     labels:
-    - "bug"
-    - "fix"
+      - "bug"
+      - "fix"
+  - title: 💥 Hotfix
+    labels:
+      - "hotfix"
+  - title: ♻️ Refactoring
+    labels:
+      - "refactor"
   - title: 🛠 Other Changes
     labels:
     - "*"
