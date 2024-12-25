@@ -6,6 +6,10 @@ on:
     branches:
       - main
 
+defaults:
+    run:
+        shell: bash
+
 jobs:
   create-release-tag:
     # PRがマージされたときのみ実行
@@ -63,11 +67,11 @@ jobs:
             --method POST \
             -H "Accept: application/vnd.github+json" \
             /repos/${{ github.repository }}/releases/generate-notes \
-            -d '{
-              "tag_name": "${{ steps.release_tag.outputs.release_tag }}",
-              "previous_tag_name": "${{ steps.pre_tag.outputs.pre_tag }}",
-              "target_commitish": "main"
-            }' | jq .body
+            -f tag_name="${{ steps.release_tag.outputs.release_tag }}" \
+            -f previous_tag_name="${{ steps.pre_tag.outputs.pre_tag }}" \
+            -f target_commitish="main" \
+            -f configuration_file_path=".github/release.yml" \
+             | jq .body
           )" >> $GITHUB_OUTPUT
 
       # リリースノートの本文を作成する
