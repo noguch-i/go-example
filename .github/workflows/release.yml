@@ -47,7 +47,7 @@ jobs:
       - name: Extract PR body
         id: pr-body
         run: |
-          PR_NUMBER=$(gh pr list --base main --state merged --json number --jq '.[0].number'  --limit 1)
+          PR_NUMBER=$(gh pr list --base main --state merged --json number --jq '.[0].number' --limit 1)
           if [ -z "$PR_NUMBER" ]; then
             echo "No merged PR found."
             exit 1
@@ -55,7 +55,7 @@ jobs:
           pr_body=$(gh pr view "$PR_NUMBER" --json body --jq '.body')
           notion_link=$(echo "$pr_body" | grep -o 'https://www.notion.so/[a-zA-Z0-9?=/-]*')
           if [ $? -ne 0 ]; then
-            NOTION_LINK=""
+            notion_link=""
           fi
           echo "NOTION_LINK=$notion_link" >> $GITHUB_OUTPUT
 
