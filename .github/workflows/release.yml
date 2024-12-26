@@ -73,20 +73,26 @@ jobs:
             -f target_commitish="main" \
             -f configuration_file_path=".github/release.yml" \
              | jq -r .body)
+          DELIMITER=$(openssl rand -hex 12)
           {
-              echo "CHANGES<<EOF"
+              echo "CHANGES<<$DELIMITER"
               echo "$CHANGES"
-              echo "EOF"
+              echo "$DELIMITER"
           } >> $GITHUB_OUTPUT
 
       # リリースノートの本文を作成する
       - name: Create release note body
         id: release-note-body
         run: |
-          echo "RELEASE_NOTE_BODY=$(echo \
-            ${{ steps.pr-body.outputs.NOTION_LINK }} \
-            ${{ steps.changes.outputs.CHANGES }} \
-            | sed 's/\\"//g' | sed 's/["“]//g')" >> $GITHUB_OUTPUT
+          NOTION_LINK="${{ steps.pr-body.outputs.NOTION_LINK }}"
+          CHANGES="${{ steps.changes.outputs.CHANGES }}"
+          RELEASE_NOTE_BODY=$(echo "$NOTION_LINK $CHANGES" | sed 's/\\"//g' | sed 's/["“]//g')
+          DELIMITER=$(openssl rand -hex 12)
+          {
+              echo "RELEASE_NOTE_BODY<<$DELIMITER"
+              echo "$RELEASE_NOTE_BODY"
+              echo "$DELIMITER"
+          } >> $GITHUB_OUTPUT
 
       # タグを切り、リリースノートを作成する
       - name: Generate release notes content for a release
