@@ -1,0 +1,34 @@
+name: Create PR
+
+on:
+    pull_request:
+        types:
+          - closed
+        branches:
+          - dev
+
+env:
+  BASE_BRANCH: main
+  DEV_BRANCH: dev
+
+jobs:
+  create_pr:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+            ref: ${{ env.BASE_BRANCH }}
+
+      - name: Reset promotion branch
+        run: |
+          git fetch origin ${{ env.DEV_BRANCH }}:${{ env.DEV_BRANCH }}
+          git reset --hard ${{ env.DEV_BRANCH }}
+
+      - name: Create pull request
+        id: create-pull-request
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: ${{ env.DEV_BRANCH }}
+          title: Mainブランチにマージ
