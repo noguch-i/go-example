@@ -1,11 +1,11 @@
 name: Create PR
 
 on:
-    pull_request:
-        types:
-          - closed
-        branches:
-          - dev
+  pull_request:
+      types:
+        - closed
+      branches:
+        - dev
 
 env:
   BASE_BRANCH: main
@@ -13,11 +13,9 @@ env:
 
 jobs:
   create_pr:
-    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@master
         with:
             ref: ${{ env.BASE_BRANCH }}
 
@@ -28,7 +26,7 @@ jobs:
 
       - name: Create pull request
         id: create-pull-request
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@v6.0.4
         with:
-          branch: ${{ env.DEV_BRANCH }}
-          title: Mainブランチにマージ
+            branch: ${{ env.DEV_BRANCH }}
+            title: Mainブランチにマージ
