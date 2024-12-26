@@ -52,16 +52,16 @@ jobs:
             echo "No merged PR found."
             exit 1
           fi
-          pr_body=$(gh pr view "$PR_NUMBER" --json body --jq '.body')
-          notion_link=$(echo "$pr_body" | grep -o 'https://www.notion.so/[a-zA-Z0-9?=/-]*') || notion_link=""
+          PR_BODY=$(gh pr view "$PR_NUMBER" --json body --jq '.body')
+          notion_link=$(echo "$PR_BODY" | grep -o 'https://www.notion.so/[a-zA-Z0-9?=/-]*') || notion_link=""
           if [ -n "$notion_link" ]; then
-            release_note="## リリースノート\n$notion_link"
+            RELEASE_NOTE="## リリースノート\n$notion_link"
           else
-            release_note=""
+            RELEASE_NOTE=""
           fi
           DELIMITER=$(openssl rand -hex 12)
           {
-              echo "$release_note<<$DELIMITER"
+              echo "RELEASE_NOTE<<$DELIMITER"
               echo "$NOTION_LINK"
               echo "$DELIMITER"
           } >> $GITHUB_OUTPUT
