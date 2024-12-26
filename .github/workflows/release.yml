@@ -59,7 +59,12 @@ jobs:
           else
             release_note=""
           fi
-          echo "NOTION_LINK=$release_note" >> $GITHUB_OUTPUT
+          DELIMITER=$(openssl rand -hex 12)
+          {
+              echo "$release_note<<$DELIMITER"
+              echo "$NOTION_LINK"
+              echo "$DELIMITER"
+          } >> $GITHUB_OUTPUT
 
       # 前回リリースからの差分をもとに、変更点を取得する
       - name: Generate release note changes
