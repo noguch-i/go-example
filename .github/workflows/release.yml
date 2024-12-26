@@ -84,7 +84,7 @@ jobs:
         id: release-note-body
         run: |
           echo "RELEASE_NOTE_BODY=$(echo \
-            ${{ steps.pr-body.outputs.PR_BODY }} \
+            ${{ steps.pr-body.outputs.NOTION_LINK }} \
             ${{ steps.changes.outputs.CHANGES }} \
             | sed 's/\\"//g' | sed 's/["“]//g')" >> $GITHUB_OUTPUT
 
