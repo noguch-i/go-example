@@ -1,8 +1,6 @@
 # PRのラベルに応じてリリースノートのカテゴリで分類
 changelog:
   exclude:
-    labels:
-    - "dev"
     authors:
     - github-actions
   categories:
