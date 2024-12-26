@@ -54,6 +54,11 @@ jobs:
           fi
           pr_body=$(gh pr view "$PR_NUMBER" --json body --jq '.body')
           notion_link=$(echo "$pr_body" | grep -o 'https://www.notion.so/[a-zA-Z0-9?=/-]*') || notion_link=""
+          if [ -n "$notion_link" ]; then
+            release_note="## リリースノート\n$notion_link"
+          else
+            release_note=""
+          fi
           echo "NOTION_LINK=$notion_link" >> $GITHUB_OUTPUT
 
       # 前回リリースからの差分をもとに、変更点を取得する
