@@ -72,7 +72,7 @@ jobs:
             -f previous_tag_name="${{ steps.pre-tag.outputs.PRE_TAG }}" \
             -f target_commitish="main" \
             -f configuration_file_path=".github/release.yml" \
-             | jq .body | sed 's/\\n/\n/g'
+             | jq -r .body
           )" >> $GITHUB_OUTPUT
 
       # リリースノートの本文を作成する
