@@ -55,13 +55,13 @@ jobs:
           PR_BODY=$(gh pr view "$PR_NUMBER" --json body --jq '.body')
           notion_link=$(echo "$PR_BODY" | grep -o 'https://www.notion.so/[a-zA-Z0-9?=/-]*') || notion_link=""
           if [ -n "$notion_link" ]; then
-            RELEASE_NOTE="## リリースノート\n$notion_link"
+            NOTION_LINK="## リリースノート\n$notion_link"
           else
-            RELEASE_NOTE=""
+            NOTION_LINK=""
           fi
           DELIMITER=$(openssl rand -hex 12)
           {
-              echo "RELEASE_NOTE<<$DELIMITER"
+              echo "NOTION_LINK<<$DELIMITER"
               echo "$NOTION_LINK"
               echo "$DELIMITER"
           } >> $GITHUB_OUTPUT
