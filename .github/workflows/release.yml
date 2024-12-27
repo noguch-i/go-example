@@ -74,14 +74,12 @@ jobs:
 
             const latestPr = prs.data[0];
 
-            // マージされているか確認
             if (!latestPr.merged_at) {
               throw new Error("No merged PR found.");
             }
 
             const prNumber = latestPr.number;
 
-            // PRの本文を取得
             const prDetails = await github.rest.pulls.get({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -120,32 +118,38 @@ jobs:
       - name: Create release note body
         id: release-note-body
         uses: actions/github-script@v7
+        env:
+          NOTION_LINK: ${{ steps.pr-body.outputs.NOTION_LINK }}
+          CHANGES: ${{ steps.changes.outputs.CHANGES }}
         with:
           script: |
-            const notionLink = "${{ steps.pr-body.outputs.NOTION_LINK }}" || "";
-            const changes = "${{ steps.changes.outputs.CHANGES }}" || "";
+            const notionLink = process.env.NOTION_LINK || "";
+            const changes = process.env.CHANGES || "";
 
-            // NOTION_LINK と CHANGES を結合し、不要な文字を削除
             let releaseNoteBody = `${notionLink} ${changes}`.replace(/\\"/g, "").replace(/["“”]/g, "");
 
-            // GITHUB_OUTPUT に書き込む
             console.log(releaseNoteBody);
             core.setOutput("RELEASE_NOTE_BODY", releaseNoteBody);
 
       # タグを切り、リリースノートを作成する
       - name: Generate release notes content for a release
         uses: actions/github-script@v7
+        env:
+          RELEASE_TAG: ${{ steps.release-tag.outputs.RELEASE_TAG }}
+          RELEASE_NOTE_BODY: ${{ steps.release-note-body.outputs.RELEASE_NOTE_BODY }}
         with:
           script: |
             try {
-              // リリース情報を生成
+              const tagName = process.env.RELEASE_TAG || "default-tag";
+              const releaseBody = process.env.RELEASE_NOTE_BODY || "Default release body.";
+
               const response = await github.rest.repos.createRelease({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                tag_name: "${{ steps.release-tag.outputs.RELEASE_TAG }}", // RELEASE_TAGは前のステップで定義
+                tag_name: tagName,
                 target_commitish: "main",
-                name: "${{ steps.release-tag.outputs.RELEASE_TAG }}", // リリース名としてタグ名を使用
-                body: "${{ steps.release-note-body.outputs.RELEASE_NOTE_BODY }}", // リリースノート本文
+                name: tagName, // リリース名としてタグ名を使用
+                body: releaseBody, // リリースノート本文
               });
 
               // レスポンスを出力
@@ -154,3 +158,4 @@ jobs:
               console.error("Failed to generate release note:", error.message);
               core.setFailed("Release creation failed.");
             }
+
