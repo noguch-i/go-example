@@ -7,15 +7,15 @@ on:
       - main
 
 defaults:
-    run:
-        shell: bash
+  run:
+    shell: bash
 
 jobs:
   create-release-tag:
     # PRがマージされたときのみ実行
     if: |
-        github.event.pull_request.merged == true &&
-        github.event.pull_request.head.ref == 'dev'
+      github.event.pull_request.merged == true &&
+      github.event.pull_request.head.ref == 'dev'
     runs-on: ubuntu-latest
 
     env:
@@ -28,8 +28,16 @@ jobs:
       # 前回のリリースタグを取得
       - name: Get previous tag
         id: pre-tag
-        run: |
-          echo "PRE_TAG=$(gh api -H "Accept: application/vnd.github+json" /repos/${{ github.repository }}/releases/latest | jq -r .tag_name)" >> $GITHUB_OUTPUT
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const latestRelease = await github.rest.repos.getLatestRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+            });
+
+            const tagName = latestRelease.data.tag_name || "";
+            core.setOutput("PRE_TAG", tagName);
 
       # タグを生成 「{YYYY.MM.DD}-{当日リリース回数}」
       - name: Generate tag
@@ -46,65 +54,103 @@ jobs:
       # リリースノートにnotionのリンクを追加
       - name: Extract PR body
         id: pr-body
-        run: |
-          PR_NUMBER=$(gh pr list --base main --state merged --json number --jq '.[0].number' --limit 1)
-          if [ -z "$PR_NUMBER" ]; then
-            echo "No merged PR found."
-            exit 1
-          fi
-          PR_BODY=$(gh pr view "$PR_NUMBER" --json body --jq '.body')
-          notion_link=$(echo "$PR_BODY" | grep -o 'https://www.notion.so/[a-zA-Z0-9?=/-]*') || notion_link=""
-          echo "NOTION_LINK=$notion_link" >> $GITHUB_OUTPUT
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // 最新のマージ済みPRを取得
+            const prs = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              base: "main",
+              state: "closed",
+              sort: "updated",
+              direction: "desc",
+              per_page: 1,
+            });
+
+            if (prs.data.length === 0) {
+              throw new Error("No merged PR found.");
+            }
+
+            const latestPr = prs.data[0];
+
+            // マージされているか確認
+            if (!latestPr.merged_at) {
+              throw new Error("No merged PR found.");
+            }
+
+            const prNumber = latestPr.number;
+
+            // PRの本文を取得
+            const prDetails = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prNumber,
+            });
+
+            const prBody = prDetails.data.body || "";
+
+            // Notionリンクを抽出
+            const notionLink = prBody.match(/https:\/\/www\.notion\.so\/[a-zA-Z0-9?=\/-]*/)?.[0] || "";
+
+            console.log(`NOTION_LINK=${notionLink}`);
+            core.setOutput("NOTION_LINK", notionLink);
 
       # 前回リリースからの差分をもとに、変更点を取得する
       - name: Generate release note changes
         id: changes
-        run: |
-          CHANGES=$(
-          gh api \
-            --method POST \
-            -H "Accept: application/vnd.github+json" \
-            /repos/${{ github.repository }}/releases/generate-notes \
-            -f tag_name="${{ steps.release-tag.outputs.RELEASE_TAG }}" \
-            -f previous_tag_name="${{ steps.pre-tag.outputs.PRE_TAG }}" \
-            -f target_commitish="main" \
-            -f configuration_file_path=".github/release.yml" \
-             | jq -r .body)
-          DELIMITER=$(openssl rand -hex 12)
-          {
-              echo "CHANGES<<$DELIMITER"
-              echo "$CHANGES"
-              echo "$DELIMITER"
-          } >> $GITHUB_OUTPUT
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const response = await github.rest.repos.generateReleaseNotes({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag_name: ${{ steps.release-tag.outputs.RELEASE_TAG }},
+              previous_tag_name: ${{ steps.pre-tag.outputs.PRE_TAG }},
+              target_commitish: "main",
+              configuration_file_path: ".github/release.yml"
+            });
+
+            const changes = response.data.body || "";
+
+            // GITHUB_OUTPUTにリリースノートを書き込む
+            core.setOutput("CHANGES", changes);
 
       # リリースノートの本文を作成する
       - name: Create release note body
         id: release-note-body
-        run: |
-          NOTION_LINK="${{ steps.pr-body.outputs.NOTION_LINK }}"
-          CHANGES="${{ steps.changes.outputs.CHANGES }}"
-          RELEASE_NOTE_BODY=$(echo "$NOTION_LINK $CHANGES" | sed 's/\\"//g' | sed 's/["“]//g')
-          DELIMITER=$(openssl rand -hex 12)
-          {
-              echo "RELEASE_NOTE_BODY<<$DELIMITER"
-              echo "$RELEASE_NOTE_BODY"
-              echo "$DELIMITER"
-          } >> $GITHUB_OUTPUT
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const notionLink = ${{ steps.pr-body.outputs.NOTION_LINK }} || "";
+            const changes = ${{ steps.changes.outputs.CHANGES }} || "";
+
+            // NOTION_LINK と CHANGES を結合し、不要な文字を削除
+            let releaseNoteBody = `${notionLink} ${changes}`.replace(/\\"/g, "").replace(/["“”]/g, "");
+
+            // GITHUB_OUTPUT に書き込む
+            console.log(releaseNoteBody);
+            core.setOutput("RELEASE_NOTE_BODY", releaseNoteBody);
 
       # タグを切り、リリースノートを作成する
       - name: Generate release notes content for a release
-        run: |
-          RESPONSE=$(gh api \
-            --method POST \
-            -f tag_name="${{ steps.release-tag.outputs.RELEASE_TAG }}" \
-            -f target_commitish="main" \
-            -f name="${{ steps.release-tag.outputs.RELEASE_TAG }}" \
-            -f body="${{ steps.release-note-body.outputs.RELEASE_NOTE_BODY }}" \
-            /repos/${{ github.repository }}/releases)
+        uses: actions/github-script@v7
+        with:
+          script: |
+            try {
+              // リリース情報を生成
+              const response = await github.rest.repos.createRelease({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                tag_name: ${{ steps.release-tag.outputs.RELEASE_TAG }}, // RELEASE_TAGは前のステップで定義
+                target_commitish: "main",
+                name: ${{ steps.release-tag.outputs.RELEASE_TAG }}, // リリース名としてタグ名を使用
+                body: ${{ steps.release-note-body.outputs.RELEASE_NOTE_BODY }}, // リリースノート本文
+              });
 
-            if [ $? -ne 0 ]; then
-                echo "Failed to generate release note"
-                exit 1
-            fi
-
-            echo "Response: $RESPONSE"
+              // レスポンスを出力
+              console.log("Response:", response.data);
+            } catch (error) {
+              console.error("Failed to generate release note:", error.message);
+              core.setFailed("Release creation failed.");
+            }
