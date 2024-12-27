@@ -123,7 +123,7 @@ jobs:
         with:
           script: |
             const notionLink = "${{ steps.pr-body.outputs.NOTION_LINK }}" || "";
-            const changes = "${{ steps.changes.outputs.CHANGES }}" || "";
+            const changes = ${{ steps.changes.outputs.CHANGES }} || "";
 
             // NOTION_LINK と CHANGES を結合し、不要な文字を削除
             let releaseNoteBody = `${notionLink} ${changes}`.replace(/\\"/g, "").replace(/["“”]/g, "");
@@ -145,7 +145,7 @@ jobs:
                 tag_name: "${{ steps.release-tag.outputs.RELEASE_TAG }}", // RELEASE_TAGは前のステップで定義
                 target_commitish: "main",
                 name: "${{ steps.release-tag.outputs.RELEASE_TAG }}", // リリース名としてタグ名を使用
-                body: "${{ steps.release-note-body.outputs.RELEASE_NOTE_BODY }}", // リリースノート本文
+                body: ${{ steps.release-note-body.outputs.RELEASE_NOTE_BODY }}, // リリースノート本文
               });
 
               // レスポンスを出力
