@@ -1,11 +1,11 @@
 # Branch pattern
 feature:
-    - head-branch: ['^feature/', 'feat/']
+- head-branch: [ '^feature/', 'feat/' ]
 fix:
-    - head-branch: ['^fix/']
+- head-branch: [ '^fix/' ]
 bug:
-    - head-branch: [ '^bug/' ]
+- head-branch: [ '^bug/' ]
 hotfix:
-    - head-branch: ['^hotfix/']
+- head-branch: [ '^hotfix/' ]
 refactor:
-    - head-branch: [ '^refactor/' ]
+- head-branch: [ '^refactor/' ]
