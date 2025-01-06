@@ -89,7 +89,7 @@ jobs:
             const prBody = "### リリースノート\n" + prDetails.data.body || "";
             console.log(`prBody=${prBody}`);
             // Notionリンクを抽出
-            const notionLink = prBody.match(/https:\/\/www\.notion\.so\/[a-zA-Z0-9?=\/-]*/)?.[0] || "";
+            const notionLink = "### リリースノート\n" + prBody.match(/https:\/\/www\.notion\.so\/[a-zA-Z0-9?=\/-]*/)?.[0] || "";
 
             console.log(`NOTION_LINK=${notionLink}`);
             core.setOutput("NOTION_LINK", notionLink);
